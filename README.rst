@@ -1,3 +1,21 @@
+This is a fork of the `stytra <https://github.com/portugueslab/stytra>`_ software from `the Portugues lab <https://github.com/portugueslab>`_.
+
+It is the version of stytra used curently at `LJP <https://www.labojeanperrin.fr/>`_
+
+The goal of this fork it to develop our own tools and routines on top of their incredible work. In the future, this fork might be pulled back into the original `stytra <https://github.com/portugueslab/stytra>`_, meaning that **as little as possible must be changed in the original code !!**
+
+Whenever possible : 
+
+- create new class with inheritence.
+- create new files intead of appending to existing ones (unless this clashes with the following rules).
+- respect the original coding style and naming conventions.
+- respect the original docstring style and conventions.
+
+As for the rest ... have fun !!!!
+
+**bellow is the original README :**
+
+
 ======
 Stytra
 ======
