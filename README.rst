@@ -11,6 +11,8 @@ Whenever possible :
 - respect the original coding style and naming conventions.
 - respect the original docstring style and conventions.
 
+To use the code in this repository, use the **Editable installation** section of the original README bellow.
+
 As for the rest ... have fun !!!!
 
 **bellow is the original README :**
