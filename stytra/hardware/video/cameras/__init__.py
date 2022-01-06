@@ -1,6 +1,7 @@
 from stytra.hardware.video.cameras.ximea import XimeaCamera
 from stytra.hardware.video.cameras.avt import AvtCamera
 from stytra.hardware.video.cameras.spinnaker import SpinnakerCamera
+from stytra.hardware.video.cameras.doublespinnaker import DoubleSpinnakerCamera
 from stytra.hardware.video.cameras.mikrotron import MikrotronCLCamera
 from stytra.hardware.video.cameras.opencv import OpenCVCamera
 from stytra.hardware.video.cameras.basler import BaslerCamera
@@ -12,6 +13,7 @@ camera_class_dict = dict(
     avt=AvtCamera,
     basler=BaslerCamera,
     spinnaker=SpinnakerCamera,
+    doublespinnaker=DoubleSpinnakerCamera,
     mikrotron=MikrotronCLCamera,
     opencv=OpenCVCamera,
 )
