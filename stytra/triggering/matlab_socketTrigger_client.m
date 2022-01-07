@@ -1,4 +1,10 @@
-t = tcpip('localhost',5554);
+fname = dir(fullfile(tempdir, 'stytra_socket_trigger_*.txt'));
+fname = fullfile(tempdir,fname.name);
+fid = fopen(fname,'rt');
+port = str2num(fgetl(fid));
+fclose(fid);
+fprintf('The port number taken from file is : %d \n',port)
+t = tcpip('localhost',port);
 if strcmp(t.status, 'open')
     fclose(t);
 end
@@ -16,3 +22,4 @@ fwrite(t,data);
 
 %%
 fclose(t);
+%%

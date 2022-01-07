@@ -1,6 +1,7 @@
 import socket
 import json
 import time
+import tempfile
 
 from stytra.triggering import Trigger
 
@@ -13,7 +14,9 @@ class SocketTrigger(Trigger):
     def __init__(self,port=5555):
         """Parameters.
 
-        :port: <int> port on which communication will happen.
+        :port: <int or 'auto'> port on which communication will happen.
+                            if int : use this in as port number
+                            if 'auto' : finds available port and saves to temp file
         """
         self.port = port
         self.protocol_duration = None
@@ -35,10 +38,22 @@ class SocketTrigger(Trigger):
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(('127.0.0.1',self.port))
+        if type(self.port) is int:
+            s.bind(('127.0.0.1',self.port))
+        elif self.port == 'auto':
+            s.bind(('127.0.0.1',0))
+            self.port = s.getsockname()[1]
+
+        temp = tempfile.NamedTemporaryFile(
+                    suffix='.txt', 
+                    prefix='stytra_socket_trigger_', 
+                    mode='w+t'
+                )
+        temp.writelines([f'{self.port}\n'])
+        temp.seek(0)
         
         s.listen(5)
-        print('[SocketTrigger] Waiting for connection...')
+        print(f'[SocketTrigger] Waiting for connection on port {self.port} ...')
         self.sock, addr = s.accept()
         self.sock.setblocking(False)
         print(f'[SocketTrigger] Connection received from {addr} .')

@@ -20,5 +20,5 @@ class FlashProtocol(Protocol):
 
 if __name__ == "__main__":
     # This is the line that actually opens stytra with the new protocol.
-    trigger = SocketTrigger(port=5554)
+    trigger = SocketTrigger(port='auto')
     st = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
