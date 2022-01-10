@@ -172,7 +172,7 @@ class DoubleSpinnakerCamera(Camera):
         self.rate_min = self.acquisition_rate_node.GetMin()
         
         logging.info("[DS] framerate control enabled")
-
+        '''
         # Making exposure controllable
         # Turn off auto exposure
         exposure_auto_node = cam.ExposureAuto
@@ -197,7 +197,7 @@ class DoubleSpinnakerCamera(Camera):
         self.gain_min = self.gain_node.GetMin()
         self.gain_max = self.gain_node.GetMax()
         logging.info("[DS] gain control enabled")
-
+        '''
         # Starting acquisition
         cam.BeginAcquisition()
         messages.append(f"I:Opened Point Grey camera {name}")
@@ -212,10 +212,11 @@ class DoubleSpinnakerCamera(Camera):
         Returns string
         -------
         """
-        logging.info("[DS] set")
+        logging.info(f"[DS] set {param}={val}")
         messages = []
         try:
             if param == "exposure":  # sent in ms
+                '''
                 # camera wants exposure in us:
                 exposure_time_to_set = val * 1000  # convert to microseconds
                 if exposure_time_to_set > self.exposure_max:
@@ -233,8 +234,11 @@ class DoubleSpinnakerCamera(Camera):
                     )
                     exposure_time_to_set = self.exposure_min
                 self.exposure_time_node.SetValue(exposure_time_to_set)
+                '''
+                messages.append("E:exposure not controllable with DoubleSpinnaker")
 
             if param == "gain":
+                '''
                 gain_to_set = val
                 if gain_to_set > self.gain_max:
                     messages.append(
@@ -249,8 +253,11 @@ class DoubleSpinnakerCamera(Camera):
                 if self.gain_node.GetAccessMode() != PySpin.RW:
                     messages.append("E:gain is not r/w - another camera window open?")
                 self.gain_node.SetValue(gain_to_set)
+                '''
+                messages.append("E:gain not controllable with DoubleSpinnaker")
 
             if param == "framerate":
+                '''
                 frame_rate = val
                 if frame_rate > self.rate_max:
                     messages.append(
@@ -263,6 +270,8 @@ class DoubleSpinnakerCamera(Camera):
                     )
                     frame_rate = self.rate_min
                 self.acquisition_rate_node.SetValue(frame_rate)
+                '''
+                messages.append("E:framerate not controllable with DoubleSpinnaker")
 
         except PySpin.SpinnakerException as ex:
             err = "E: SpinnakerCamera.set() error: {0}".format(ex)
@@ -297,7 +306,7 @@ class DoubleSpinnakerCamera(Camera):
                 #  buffer.
                 image_result2.Release()
                 #return [image_converted1, image_converted2]
-                return image_converted2
+                return image_converted1
 
         except PySpin.SpinnakerException as ex:
             raise CameraError("Frame not read")
