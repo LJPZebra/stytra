@@ -6,6 +6,8 @@ try:
 except ImportError:
     pass
 
+import logging
+logging.basicConfig(filename='DS.log', level=logging.INFO)
 
 class DoubleSpinnakerCamera(Camera):
     """Class for simple control of 2 Point Grey camera simultaneously.
@@ -15,23 +17,52 @@ class DoubleSpinnakerCamera(Camera):
     """
 
     def __init__(self, **kwargs):
-        print("[DS] init")
+        logging.info("[DS] init")
         super().__init__(**kwargs)
         self.system = PySpin.System.GetInstance()
-        self.cams = self.system.GetCameras()[:2]
-        for cam in self.cams:
-            assert isinstance(cam, PySpin.CameraPtr)
+        self.cams = self.system.GetCameras()
+        assert (self.cams.GetSize()==2)
+        logging.info("[DS] init found 2 cams.")
         self.cam1 = self.cams[0]
         self.cam2 = self.cams[1]
+        self.cams = [self.cam1, self.cam2]
+        for cam in self.cams:
+            assert isinstance(cam, PySpin.CameraPtr)
+        logging.info("[DS] all cams are Ptr cams")
+            
+        self.cams_info = [{},{}]
+        for i, cam in enumerate(self.cams):
+            nodemap = cam.GetTLDeviceNodeMap()
+            node_device_information = PySpin.CCategoryPtr(
+                nodemap.GetNode('DeviceInformation')
+            )
+            features = node_device_information.GetFeatures()
+            
+            for feature in features:
+                node_feature = PySpin.CValuePtr(feature)
+                self.cams_info[i][node_feature.GetName()] = node_feature.ToString()
+        logging.info(f"[DS] cams : {self.cams_info}")
+        
+        self.cam_names = []
+        for i in range(len(self.cams_info)):
+            self.cam_names.append(
+                self.cams_info[i]['DeviceModelName'].split(" ")[0]
+            )
+        logging.info(f"[DS] cams : {self.cam_names}")
+        
+        logging.info("[DS] done with init")
         
     def open_camera(self):
-        print("[DS] open")
-        msg1 = self.open_single_camera(self.cam1, self.roi[0])
-        msg2 = self.open_single_camera(self.cam2, self.roi[1])
-        return msg1 + msg2
+        logging.info("[DS] open")
+        msgs = []
+        for cam, name in zip(self.cams, self.cam_names):
+            msg = self.open_single_camera(cam, name)
+            msgs += msg
+        #msg2 = self.open_single_camera(self.cam2)
+        return msgs
 
-    def open_single_camera(self, cam, roi):
-        print("[DS] single")
+    def open_single_camera(self, cam, name):
+        logging.info(f"[DS] opening camera {name}")
         messages = []
         cam.Init()
         nodemap = cam.GetNodeMap()
@@ -59,7 +90,9 @@ class DoubleSpinnakerCamera(Camera):
             )
         acquisition_mode_continuous = acquisition_mode_continuous_node.GetValue()
         acquisition_mode_node.SetIntValue(acquisition_mode_continuous)
+        logging.info("[DS] acquisition mode set to continuous")
 
+        '''
         # Set ROI first if applicable (framerate limits depend on it)
         try:
             # Note set width/height before x/y offset because upon
@@ -94,6 +127,7 @@ class DoubleSpinnakerCamera(Camera):
 
         except Exception as ex:
             messages.append("E:Could not set ROI. Exception: {0}.".format(ex))
+        '''
 
         # Enabling framerate control from Stytra
 
@@ -136,6 +170,8 @@ class DoubleSpinnakerCamera(Camera):
         # Determine frame rate min/max (this depends on ROI)
         self.rate_max = self.acquisition_rate_node.GetMax()
         self.rate_min = self.acquisition_rate_node.GetMin()
+        
+        logging.info("[DS] framerate control enabled")
 
         # Making exposure controllable
         # Turn off auto exposure
@@ -149,6 +185,7 @@ class DoubleSpinnakerCamera(Camera):
             messages.append("W:Exposure time is not read/write")
         self.exposure_max = self.exposure_time_node.GetMax()
         self.exposure_min = self.exposure_time_node.GetMin()
+        logging.info("[DS] exposure control enabled")
 
         # Making gain controllable
         # Turn off auto-gain
@@ -159,10 +196,11 @@ class DoubleSpinnakerCamera(Camera):
         self.gain_node = cam.Gain
         self.gain_min = self.gain_node.GetMin()
         self.gain_max = self.gain_node.GetMax()
+        logging.info("[DS] gain control enabled")
 
         # Starting acquisition
         cam.BeginAcquisition()
-        messages.append("I:Opened Point Grey camera")
+        messages.append(f"I:Opened Point Grey camera {name}")
         return messages
 
     def set(self, param, val):
@@ -174,7 +212,7 @@ class DoubleSpinnakerCamera(Camera):
         Returns string
         -------
         """
-        print("[DS] set")
+        logging.info("[DS] set")
         messages = []
         try:
             if param == "exposure":  # sent in ms
@@ -233,7 +271,7 @@ class DoubleSpinnakerCamera(Camera):
         return messages
 
     def read(self):
-        print("[DS] read")
+        logging.debug("[DS] read")
         try:
             #  Retrieve next received image
             image_result1 = self.cam1.GetNextImage()
@@ -265,7 +303,7 @@ class DoubleSpinnakerCamera(Camera):
             raise CameraError("Frame not read")
 
     def release(self):
-        print("[DS] release")
+        logging.info("[DS] release")
         self.cam1.EndAcquisition()
         self.cam1.DeInit()
         del self.cam1
