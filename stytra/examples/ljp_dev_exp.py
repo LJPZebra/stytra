@@ -13,7 +13,10 @@ import numpy as np
 class TestProtocol(Protocol):
     name = "test_protocol"
 
-    stytra_config = dict(camera=dict(type="doublespinnaker"))
+    stytra_config = dict(
+        camera=dict(type="doublespinnaker"),
+        tracking=dict(embedded=True, method="tail"),
+    )
     
     def __init__(self):
         super().__init__()
