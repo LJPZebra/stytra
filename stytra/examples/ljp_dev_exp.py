@@ -22,26 +22,27 @@ import numpy as np
 class NewRollingBackgroundSubtractor(ImageToImageNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, name="rollbgsub", **kwargs)
+        self.diagnostic_image_options = ["rmv_BKGD", "BKGD"]
         self.background_image = None
         self.temp = None  # temporary image
         self.ntemp = 0  # number of images in current rolling mean
         self.change_flag = False  # wether the background has been changed
+        self.lastSum = 0
 
     def reset(self):
-        self.background_image = None
+        self.background_image = np.load('BKGD.npy')#None
 
     def _process(
         self,
         im,
         compute_background : Param(False),
-        only_darker: Param(True),
     ):
         messages = []
-
+        
         if self.background_image is None:
-            self.background_image = im.astype(np.float32)
+            self.background_image = im#.astype(np.float32)
             messages.append("I:New background image set")
-
+        
         if compute_background:
             messages.append("I:Computing new background image")
             self.change_flag = True
@@ -53,19 +54,28 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         else:
             if self.change_flag:
                 self.background_image[:, :] = (self.temp / self.ntemp).astype(np.float32)
+                messages.append(f"I:New background image set from {self.ntemp} images")
+                np.save("BKGD.npy", self.background_image)
                 self.change_flag = False
                 self.temp = None
                 self.ntemp = 0
-                messages.append("I:New background image set")
-                messages.append(f"I:img : {type(im)}, {np.min(im), np.max(im)}")
-                messages.append(f"I:bgd : {type(self.background_image)}, {np.min(self.background_image), np.max(self.background_image)}")
-
-        #if only_darker:
-        #    return NodeOutput(messages, negdif(self.background_image, im))
-        #else:
-        #    return NodeOutput(messages, absdif(self.background_image, im))
-        return NodeOutput(messages, posdif(self.background_image, im))
-
+                self.lastSum = np.sum(self.background_image)
+            elif np.sum(self.background_image) != self.lastSum:
+                messages.append(f"E:Bgd changed !!!!")
+                #self.background_image = np.load("BKGD.npy")
+                self.lastSum = np.sum(self.background_image)
+        
+        
+        out = posdif(self.background_image, im)
+        if self.set_diagnostic == "rmv_BKGD":
+            self.diagnostic_image = out
+        if self.set_diagnostic == "BKGD":
+            self.diagnostic_image = self.background_image
+        
+        return NodeOutput(messages, out )
+        
+    
+'''
 class RollingBackgroundSubtractor(ImageToImageNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, name="rollbgsub", **kwargs)
@@ -120,24 +130,27 @@ class RollingBackgroundSubtractor(ImageToImageNode):
             return NodeOutput(messages, negdif(self.background_image, im))
         else:
             return NodeOutput(messages, absdif(self.background_image, im))
-
+'''
 class CustomTailPipeline(Pipeline):
     def __init__(self):
         super().__init__()
         self.bgsub = NewRollingBackgroundSubtractor(parent=self.root)
         #self.bgsub = BackgroundSubtractor(parent=self.root)
         self.filter = Prefilter(parent=self.bgsub)
+        
+        
         self.tailtrack = CentroidTrackingMethod(parent=self.filter)
         self.extra_widget = TailStreamPlot
         self.display_overlay = TailTrackingSelection
 
 
 class TestTrackingProtocol(Protocol):
-    name = "test_tracking"
+    name = "test_track_tracking"
 
     stytra_config = dict(
         tracking=dict(method=CustomTailPipeline),
-        camera=dict(video_file=str("/home/ljp/SSD/Data/2021-03-23/Run03/Images/tail_2021-03-23-174517-0003.avi")),
+        #camera=dict(video_file=str("/home/ljp/SSD/Data/2021-03-23/Run03/Images/tail_2021-03-23-174517-0003.avi")),
+        camera=dict(type="doublespinnaker"),
     )
 
     def get_stim_sequence(self):
@@ -195,7 +208,7 @@ class FlashProtocol(Protocol):
         return stimuli
 
 class TestStimulations(Protocol):
-    name = "test_protocol"
+    name = "test_stim_protocol"
 
     def __init__(self):
         super().__init__()
@@ -244,13 +257,9 @@ if __name__ == "__main__":
     #trigger = SocketTrigger(port='auto')
     #s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
     
-    s = Stytra(protocol=TestProtocol())
+    #s = Stytra(protocol=TestProtocol())
 
     #s = Stytra(protocol=TestStimulations())
-<<<<<<< HEAD
-
-=======
->>>>>>> e848d35eb257894d240fd8c911ddaaae589c6dcd
 
     s = Stytra(protocol=TestTrackingProtocol())
 
