@@ -72,6 +72,27 @@ def negdif(xf, y):
     else:
         return 0
 
+@vectorize([uint8(float32, uint8)])
+def posdif(xf, y):
+    """
+
+    Parameters
+    ----------
+    x :
+
+    y :
+
+
+    Returns
+    -------
+
+    """
+    x = np.uint8(xf)
+    if y > x:
+        return y - x
+    else:
+        return 0
+
 
 @vectorize([uint8(float32, uint8)])
 def absdif(xf, y):

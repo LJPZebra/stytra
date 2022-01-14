@@ -5,9 +5,146 @@ from lightparam import Param
 
 from stytra.triggering.socketTrigger import SocketTrigger
 
+from stytra.experiments.fish_pipelines import TailTrackingPipeline
+
+from stytra.tracking.pipelines import Pipeline
+from stytra.tracking.preprocessing import Prefilter, BackgroundSubtractor, negdif, absdif, posdif
+from stytra.gui.camera_display import TailTrackingSelection
+from stytra.tracking.tail import CentroidTrackingMethod
+from stytra.gui.fishplots import TailStreamPlot
+from stytra.tracking.pipelines import ImageToImageNode, NodeOutput
+
 
 import pandas as pd
 import numpy as np
+
+
+class NewRollingBackgroundSubtractor(ImageToImageNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, name="rollbgsub", **kwargs)
+        self.background_image = None
+        self.temp = None  # temporary image
+        self.ntemp = 0  # number of images in current rolling mean
+        self.change_flag = False  # wether the background has been changed
+
+    def reset(self):
+        self.background_image = None
+
+    def _process(
+        self,
+        im,
+        compute_background : Param(False),
+        only_darker: Param(True),
+    ):
+        messages = []
+
+        if self.background_image is None:
+            self.background_image = im.astype(np.float32)
+            messages.append("I:New background image set")
+
+        if compute_background:
+            messages.append("I:Computing new background image")
+            self.change_flag = True
+            if self.temp is None:
+                self.temp = im.astype(np.float32)
+            else:
+                self.temp += im.astype(np.float32)
+            self.ntemp += 1
+        else:
+            if self.change_flag:
+                self.background_image[:, :] = (self.temp / self.ntemp).astype(np.float32)
+                self.change_flag = False
+                self.temp = None
+                self.ntemp = 0
+                messages.append("I:New background image set")
+                messages.append(f"I:img : {type(im)}, {np.min(im), np.max(im)}")
+                messages.append(f"I:bgd : {type(self.background_image)}, {np.min(self.background_image), np.max(self.background_image)}")
+
+        #if only_darker:
+        #    return NodeOutput(messages, negdif(self.background_image, im))
+        #else:
+        #    return NodeOutput(messages, absdif(self.background_image, im))
+        return NodeOutput(messages, posdif(self.background_image, im))
+
+class RollingBackgroundSubtractor(ImageToImageNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, name="rollbgsub", **kwargs)
+        self.background_image = None
+        self.i = 0  # compting frames until new background should be cumputer
+        self.j = 0  # compting frames for rolling mean
+        self.temp = None  # temporary image
+        self.ntemp = 0  # number of images in current rolling mean
+
+    def reset(self):
+        self.background_image = None
+
+    def _process(
+        self,
+        im,
+        learning_rate: Param(0.04, (0.0, 1.0)),
+        learn_every: Param(1000, (1, 10000)),
+        learn_during: Param(100, (1, 10000)),
+        only_darker: Param(True),
+    ):
+        messages = []
+        if learn_during >= learn_every:
+            learn_during = int(learn_every/2)
+            messages.append("W:learn_during > learn_every")        
+        
+        if self.background_image is None:
+            self.background_image = im.astype(np.float32)
+            messages.append("I:New backgorund image set")
+        elif self.i == 0:
+            messages.append("I:Computing new backgorund image")
+            self.j = (self.j + 1) % learn_during
+            if self.j == 0:
+                self.temp = (self.temp / self.ntemp).astype(np.float32)
+                self.background_image[:, :] = self.temp * np.float32(learning_rate) + self.background_image * np.float32(1 - learning_rate)
+                messages.append(f"E:temp : {np.min(self.temp)}, {np.max(self.temp)}")
+                self.temp = None
+                self.ntemp = 0
+                self.i = 1
+                self.j = 0
+                messages.append("I:New backgorund image set")
+            else:
+                if self.temp is None:
+                    self.temp = im
+                else:
+                    self.temp += im
+                self.ntemp += 1
+        else:
+            self.i = (self.i + 1) % learn_every
+
+
+        if only_darker:
+            return NodeOutput(messages, negdif(self.background_image, im))
+        else:
+            return NodeOutput(messages, absdif(self.background_image, im))
+
+class CustomTailPipeline(Pipeline):
+    def __init__(self):
+        super().__init__()
+        self.bgsub = NewRollingBackgroundSubtractor(parent=self.root)
+        #self.bgsub = BackgroundSubtractor(parent=self.root)
+        self.filter = Prefilter(parent=self.bgsub)
+        self.tailtrack = CentroidTrackingMethod(parent=self.filter)
+        self.extra_widget = TailStreamPlot
+        self.display_overlay = TailTrackingSelection
+
+
+class TestTrackingProtocol(Protocol):
+    name = "test_tracking"
+
+    stytra_config = dict(
+        tracking=dict(method=CustomTailPipeline),
+        camera=dict(video_file=str("/home/ljp/SSD/Data/2021-03-23/Run03/Images/tail_2021-03-23-174517-0003.avi")),
+    )
+
+    def get_stim_sequence(self):
+        # Empty protocol of specified duration:
+        return [Pause(duration=10)]
+
+
 
 
 class TestProtocol(Protocol):
@@ -110,8 +247,12 @@ if __name__ == "__main__":
     s = Stytra(protocol=TestProtocol())
 
     #s = Stytra(protocol=TestStimulations())
+<<<<<<< HEAD
 
+=======
+>>>>>>> e848d35eb257894d240fd8c911ddaaae589c6dcd
 
+    s = Stytra(protocol=TestTrackingProtocol())
 
 
 
