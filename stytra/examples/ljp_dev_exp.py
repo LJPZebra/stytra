@@ -107,9 +107,9 @@ if __name__ == "__main__":
     #trigger = SocketTrigger(port='auto')
     #s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
     
-    #s = Stytra(protocol=TestProtocol())
+    s = Stytra(protocol=TestProtocol())
 
-    s = Stytra(protocol=TestStimulations())
+    #s = Stytra(protocol=TestStimulations())
 
 
 

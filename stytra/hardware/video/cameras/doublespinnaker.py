@@ -280,7 +280,7 @@ class DoubleSpinnakerCamera(Camera):
         return messages
 
     def read(self):
-        logging.debug("[DS] read")
+        logging.info("[DS] read")
         try:
             #  Retrieve next received image
             image_result1 = self.cam1.GetNextImage()
@@ -307,6 +307,7 @@ class DoubleSpinnakerCamera(Camera):
                 image_result2.Release()
                 #return [image_converted1, image_converted2]
                 #return image_converted2
+                logging.info("[DS] images transformed")
                 return stack(image_converted1, image_converted2)
 
         except PySpin.SpinnakerException as ex:
@@ -333,16 +334,19 @@ def stack(im1, im2):
     """Stack the 2 images together."""
     w1, h1 = im1.shape
     w2, h2 = im2.shape
+    logging.info(f"[DS] shapes = {(w1, h1)} . {(w2, h2)}")
     
     if ( (w1+w2)*max(h1,h2) ) < ( max(w1,w2)*(h1+h2) ):
         w = w1+w2
         h = max(h1,h2)
+        logging.info(f"[DS] output shape = {(w, h)}")
         img = np.zeros((w,h))
         img[0:w1, 0:h1] = im1
         img[w1:w1+w2, 0:h2] = im2
     else:
-        w = mqx(w1,w2)
+        w = max(w1,w2)
         h = h1+h2
+        logging.info(f"[DS] output shape = {(w, h)}")
         img = np.zeros((w,h))
         img[0:w1, 0:h1] = im1
         img[0:w2, h1:h1+h2] = im2
