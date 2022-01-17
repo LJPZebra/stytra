@@ -18,10 +18,14 @@ from stytra.tracking.pipelines import ImageToImageNode, NodeOutput
 import pandas as pd
 import numpy as np
 
+import logging
+logging.basicConfig(filename='main.log', level=logging.INFO)
+
 
 class NewRollingBackgroundSubtractor(ImageToImageNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, name="rollbgsub", **kwargs)
+        logging.info("[NRBS] init")
         self.diagnostic_image_options = ["rmv_BKGD", "BKGD"]
         self.background_image = None
         self.temp = None  # temporary image
@@ -30,7 +34,13 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         self.lastSum = 0
 
     def reset(self):
-        self.background_image = np.load('BKGD.npy')#None
+        logging.info("[NRBS] reset")
+        try:
+            logging.info("[NRBS] reset - tryig loqd")
+            self.background_image = np.load('BKGD.npy')#None
+        except:
+            logging.info("[NRBS] reset - no saved BKGD file")
+            #self.background_image = None
 
     def _process(
         self,
@@ -38,12 +48,15 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         compute_background : Param(False),
     ):
         messages = []
-        
+        logging.debug("[NRBS] process")
         if self.background_image is None:
+            logging.info("[NRBS] is none")
             self.background_image = im#.astype(np.float32)
+            np.save("BKGD.npy", self.background_image)
             messages.append("I:New background image set")
         
         if compute_background:
+            logging.info("[NRBS] compyte bqckground")
             messages.append("I:Computing new background image")
             self.change_flag = True
             if self.temp is None:
@@ -53,6 +66,7 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
             self.ntemp += 1
         else:
             if self.change_flag:
+                logging.info("[NRBS] chqnge flqg")
                 self.background_image[:, :] = (self.temp / self.ntemp).astype(np.float32)
                 messages.append(f"I:New background image set from {self.ntemp} images")
                 np.save("BKGD.npy", self.background_image)
@@ -61,6 +75,7 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
                 self.ntemp = 0
                 self.lastSum = np.sum(self.background_image)
             elif np.sum(self.background_image) != self.lastSum:
+                logging.info("[NRBS] background chqnge")
                 messages.append(f"E:Bgd changed !!!!")
                 #self.background_image = np.load("BKGD.npy")
                 self.lastSum = np.sum(self.background_image)
