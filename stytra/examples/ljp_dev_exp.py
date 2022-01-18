@@ -269,7 +269,7 @@ class TestStimulations(Protocol):
 
 if __name__ == "__main__":
     
-    trigger = SocketTrigger(port=5556)
+    trigger = SocketTrigger(port='auto')
     s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
     
     #s = Stytra(protocol=TestProtocol())

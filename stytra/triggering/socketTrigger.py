@@ -50,12 +50,10 @@ class SocketTrigger(Trigger):
         elif self.port == "auto":
             s.bind(("127.0.0.1", 0))
             self.port = s.getsockname()[1]
-
-        temp = tempfile.NamedTemporaryFile(
-            suffix=".txt", prefix="stytra_socket_trigger_", mode="w+t"
-        )
-        temp.writelines([f"{self.port}\n"])
-        temp.seek(0)
+            
+        temp_path = tempfile.gettempdir() + '\\stytra_socket_trigger_port.txt'
+        with open(temp_path, "w") as f:
+            f.write(f"{self.port}\n")
 
         s.listen(5)
         print(f"[SocketTrigger] Waiting for connection on port {self.port} ..")
@@ -69,3 +67,4 @@ class SocketTrigger(Trigger):
         """Clean up socket upon exit."""
         print("[SocketTrigger] Compete function called.")
         self.sock.close()
+        self.temp.close()
