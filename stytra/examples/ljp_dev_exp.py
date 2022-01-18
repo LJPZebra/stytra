@@ -217,8 +217,8 @@ class FlashProtocol(Protocol):
 
     def get_stim_sequence(self):
         stimuli = [
-            Pause(duration=4.0),
-            FullFieldVisualStimulus(duration=1.0, color=(255, 255, 255)),
+            Pause(duration=2.0),
+            FullFieldVisualStimulus(duration=2.0, color=(255, 255, 255)),
         ]
         return stimuli
 
@@ -269,14 +269,14 @@ class TestStimulations(Protocol):
 
 if __name__ == "__main__":
     
-    #trigger = SocketTrigger(port='auto')
-    #s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
+    trigger = SocketTrigger(port=5556)
+    s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
     
     #s = Stytra(protocol=TestProtocol())
 
     #s = Stytra(protocol=TestStimulations())
 
-    s = Stytra(protocol=TestTrackingProtocol())
+    #s = Stytra(protocol=TestTrackingProtocol())
 
 
 
