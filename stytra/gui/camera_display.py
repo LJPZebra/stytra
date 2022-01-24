@@ -518,6 +518,87 @@ class EyeTailTrackingSelection(TailTrackingSelection, EyeTrackingSelection):
     pass
 
 
+class EyeLumTrackingSelection(CameraSelection):
+    def __init__(self, **kwargs):
+        """ """
+        super().__init__(**kwargs)
+
+        # Draw ROI for eyes region selection:
+        self.pre_th = [0, 0]
+
+        self.eye_params = self.experiment.pipeline.eyetrack._params
+        self.roi_eyeL = pg.ROI(
+            pos=self.eye_params.L_wnd_pos,
+            size=self.eye_params.L_wnd_dim,
+            pen=dict(color=(5, 40, 200), width=3),
+        )
+        self.roi_eyeR = pg.ROI(
+            pos=self.eye_params.R_wnd_pos,
+            size=self.eye_params.R_wnd_dim,
+            pen=dict(color=(8, 200, 5), width=3),
+        )
+
+        self.roi_eyeR.addScaleHandle([0, 0], [1, 1])
+        self.roi_eyeR.addScaleHandle([1, 1], [0, 0])
+        self.roi_eyeL.addScaleHandle([0, 0], [1, 1])
+        self.roi_eyeL.addScaleHandle([1, 1], [0, 0])
+
+        self.initialise_roi(self.roi_eyeL)
+        self.initialise_roi(self.roi_eyeR)
+
+        self.setting_param_val = False
+
+    def set_pos_from_tree(self):
+        """Go to parent for definition."""
+        super().set_pos_from_tree()
+        if not self.setting_param_val:
+            self.roi_eyeL.setPos(self.eye_params.L_wnd_pos, finish=False)
+            self.roi_eyeL.setSize(self.eye_params.L_wnd_dim)
+
+            self.roi_eyeR.setPos(self.eye_params.R_wnd_pos, finish=False)
+            self.roi_eyeR.setSize(self.eye_params.R_wnd_dim)
+
+    def set_pos_from_roi(self):
+        """Go to parent for definition."""
+        super().set_pos_from_roi()
+
+        self.setting_param_val = True
+        self.eye_params.params.L_wnd_dim.changed = True
+        self.eye_params.L_wnd_dim = tuple([int(p) for p in self.roi_eyeL.size()])
+        self.eye_params.params.L_wnd_pos.changed = True
+        self.eye_params.L_wnd_pos = tuple([int(p) for p in self.roi_eyeL.pos()])
+
+        self.eye_params.params.R_wnd_dim.changed = True
+        self.eye_params.R_wnd_dim = tuple([int(p) for p in self.roi_eyeR.size()])
+        self.eye_params.params.R_wnd_pos.changed = True
+        self.eye_params.R_wnd_pos = tuple([int(p) for p in self.roi_eyeR.pos()])
+
+        self.setting_param_val = False
+
+    def scale_changed(self):
+        self.set_pos_from_tree()
+
+    def retrieve_image(self):
+        """Go to parent for definition."""
+        super().retrieve_image()
+
+        if self.current_image is None:
+            return
+
+        # Get data from queue(first is timestamp)
+        if len(self.experiment.acc_tracking.stored_data) > 1:
+            # To match tracked points and frame displayed looks for matching
+            # timestamps from the two different queues:
+            retrieved_data = self.experiment.acc_tracking.values_at_abs_time(
+                self.current_frame_time
+            )
+            # Check for data to be displayed:
+
+            if len(self.experiment.acc_tracking.stored_data) > 1:
+                self.roi_eyeL.setPen(dict(color=(5, 40, 200), width=3))
+                self.roi_eyeR.setPen(dict(color=(8, 200, 5), width=3))
+
+
 class CameraViewCalib(CameraViewWidget):
     """ """
 
