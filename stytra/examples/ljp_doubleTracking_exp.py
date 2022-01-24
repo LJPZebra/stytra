@@ -38,7 +38,8 @@ class SimpleDoubleTrackerProtocol(EmptyProtocol):
             method=DoubleTrackingPipeline,
         ),
         camera=dict(
-            video_file="/home/ljp/Run_03/14h37m02s.avi",
+            #video_file="/home/ljp/Run_03/14h37m02s.avi",
+            type="doublespinnaker",
         ),
     )
 
