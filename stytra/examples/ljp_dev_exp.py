@@ -31,17 +31,27 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         self.temp = None  # temporary image
         self.ntemp = 0  # number of images in current rolling mean
         self.change_flag = False  # wether the background has been changed
-        self.lastSum = 0
+        self.lastMean = 0
+        self.lastBackground_image = None
 
     def reset(self):
         logging.info("[NRBS] reset")
-        try:
-            logging.info("[NRBS] reset - tryig loqd")
-            self.background_image = np.load('BKGD.npy')#None
-        except:
-            logging.info("[NRBS] reset - no saved BKGD file")
-            #self.background_image = None
-
+        self.background_image = None
+    
+    def changed(self, vals):
+        #self.background_image = np.load('BKGD.npy')
+        if self.background_image is not None:
+            mean = np.mean(self.background_image)
+            if mean != self.lastMean:
+                logging.info(f"[NRBS] random change. setting back to previously saved background.")
+                self.background_image = np.load('BKGD.npy')
+    
+    def new_bkgd(self, im):
+        logging.info("[NRBS] getting and saving new bkgd")
+        self.background_image = im
+        self.lastMean = np.mean(self.background_image)
+        np.save("BKGD.npy", self.background_image)
+        
     def _process(
         self,
         im,
@@ -49,12 +59,16 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
     ):
         messages = []
         logging.debug("[NRBS] process")
+        
         if self.background_image is None:
             logging.info("[NRBS] is none")
-            self.background_image = im#.astype(np.float32)
-            np.save("BKGD.npy", self.background_image)
+            self.new_bkgd(im)
             messages.append("I:New background image set")
-        
+            #self.background_image = im
+            #self.lastMean = np.mean(self.background_image)
+            #np.save("BKGD.npy", self.background_image)
+            #messages.append("I:New background image set")
+        """
         if compute_background:
             logging.info("[NRBS] compyte bqckground")
             messages.append("I:Computing new background image")
@@ -80,7 +94,7 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
                 #self.background_image = np.load("BKGD.npy")
                 self.lastSum = np.sum(self.background_image)
         
-        
+        """
         out = posdif(self.background_image, im)
         if self.set_diagnostic == "rmv_BKGD":
             self.diagnostic_image = out
@@ -89,63 +103,7 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         
         return NodeOutput(messages, out )
         
-    
-'''
-class RollingBackgroundSubtractor(ImageToImageNode):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, name="rollbgsub", **kwargs)
-        self.background_image = None
-        self.i = 0  # compting frames until new background should be cumputer
-        self.j = 0  # compting frames for rolling mean
-        self.temp = None  # temporary image
-        self.ntemp = 0  # number of images in current rolling mean
 
-    def reset(self):
-        self.background_image = None
-
-    def _process(
-        self,
-        im,
-        learning_rate: Param(0.04, (0.0, 1.0)),
-        learn_every: Param(1000, (1, 10000)),
-        learn_during: Param(100, (1, 10000)),
-        only_darker: Param(True),
-    ):
-        messages = []
-        if learn_during >= learn_every:
-            learn_during = int(learn_every/2)
-            messages.append("W:learn_during > learn_every")        
-        
-        if self.background_image is None:
-            self.background_image = im.astype(np.float32)
-            messages.append("I:New backgorund image set")
-        elif self.i == 0:
-            messages.append("I:Computing new backgorund image")
-            self.j = (self.j + 1) % learn_during
-            if self.j == 0:
-                self.temp = (self.temp / self.ntemp).astype(np.float32)
-                self.background_image[:, :] = self.temp * np.float32(learning_rate) + self.background_image * np.float32(1 - learning_rate)
-                messages.append(f"E:temp : {np.min(self.temp)}, {np.max(self.temp)}")
-                self.temp = None
-                self.ntemp = 0
-                self.i = 1
-                self.j = 0
-                messages.append("I:New backgorund image set")
-            else:
-                if self.temp is None:
-                    self.temp = im
-                else:
-                    self.temp += im
-                self.ntemp += 1
-        else:
-            self.i = (self.i + 1) % learn_every
-
-
-        if only_darker:
-            return NodeOutput(messages, negdif(self.background_image, im))
-        else:
-            return NodeOutput(messages, absdif(self.background_image, im))
-'''
 class CustomTailPipeline(Pipeline):
     def __init__(self):
         super().__init__()
@@ -268,15 +226,15 @@ class TestStimulations(Protocol):
 
 
 if __name__ == "__main__":
-    
-    trigger = SocketTrigger(port='auto')
-    s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
+    logging.info("[MAIN] ______________________________________________________")
+    #trigger = SocketTrigger(port='auto')
+    #s = Stytra(protocol=FlashProtocol(), scope_triggering=trigger)
     
     #s = Stytra(protocol=TestProtocol())
 
     #s = Stytra(protocol=TestStimulations())
 
-    #s = Stytra(protocol=TestTrackingProtocol())
+    s = Stytra(protocol=TestTrackingProtocol())
 
 
 
