@@ -39,12 +39,14 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
         self.background_image = None
     
     def changed(self, vals):
-        #self.background_image = np.load('BKGD.npy')
         if self.background_image is not None:
             mean = np.mean(self.background_image)
             if mean != self.lastMean:
                 logging.info(f"[NRBS] random change. setting back to previously saved background.")
-                self.background_image = np.load('BKGD.npy')
+                try:
+                    self.background_image = np.load('BKGD.npy')
+                except FileNotFoundError:
+                    self.background_image = None
     
     def new_bkgd(self, im):
         logging.info("[NRBS] getting and saving new bkgd")
@@ -64,37 +66,27 @@ class NewRollingBackgroundSubtractor(ImageToImageNode):
             logging.info("[NRBS] is none")
             self.new_bkgd(im)
             messages.append("I:New background image set")
-            #self.background_image = im
-            #self.lastMean = np.mean(self.background_image)
-            #np.save("BKGD.npy", self.background_image)
-            #messages.append("I:New background image set")
-        """
+        
         if compute_background:
-            logging.info("[NRBS] compyte bqckground")
             messages.append("I:Computing new background image")
             self.change_flag = True
             if self.temp is None:
+                logging.info("[NRBS] compute new background")
                 self.temp = im.astype(np.float32)
             else:
                 self.temp += im.astype(np.float32)
             self.ntemp += 1
         else:
             if self.change_flag:
-                logging.info("[NRBS] chqnge flqg")
-                self.background_image[:, :] = (self.temp / self.ntemp).astype(np.float32)
+                logging.info("[NRBS] finished computing new background")
+                #self.background_image[:, :] = (self.temp / self.ntemp).astype(np.float32)
+                self.new_bkgd((self.temp / self.ntemp).astype(np.float32))
                 messages.append(f"I:New background image set from {self.ntemp} images")
-                np.save("BKGD.npy", self.background_image)
                 self.change_flag = False
                 self.temp = None
                 self.ntemp = 0
-                self.lastSum = np.sum(self.background_image)
-            elif np.sum(self.background_image) != self.lastSum:
-                logging.info("[NRBS] background chqnge")
-                messages.append(f"E:Bgd changed !!!!")
-                #self.background_image = np.load("BKGD.npy")
-                self.lastSum = np.sum(self.background_image)
         
-        """
+        
         out = posdif(self.background_image, im)
         if self.set_diagnostic == "rmv_BKGD":
             self.diagnostic_image = out
